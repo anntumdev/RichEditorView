@@ -1,9 +1,7 @@
-//
+    //
 //  RichEditor.swift
 //
 //  Created by Caesar Wirth on 4/1/15.
-//  Updated/Modernized by C. Bess on 9/18/19.
-//
 //  Copyright (c) 2015 Caesar Wirth. All rights reserved.
 //
 
@@ -53,7 +51,7 @@ private let DefaultInnerLineHeight: Int = 21
         set { webView.accessoryView = newValue }
     }
     
-    /// The internal WKWebView that is used to display the editor.
+    /// The internal WKWebView that is used to display the text.
     open private(set) var webView: RichEditorWebView
     
     /// Whether or not scroll is enabled on the view.
@@ -72,9 +70,7 @@ private let DefaultInnerLineHeight: Int = 21
     /// Is continually updated as the text is being edited.
     open private(set) var contentHTML: String = "" {
         didSet {
-            if isReady {
-                delegate?.richEditor?(self, contentDidChange: contentHTML)
-            }
+            delegate?.richEditor?(self, contentDidChange: contentHTML)
         }
     }
     
@@ -93,11 +89,8 @@ private let DefaultInnerLineHeight: Int = 21
         }
     }
     
-    /// Whether or not the editor DOM element has finished loading or not yet.
+    /// Whether or not the editor has finished loading or not yet.
     private var isEditorLoaded = false
-    
-    /// Indicates if the editor should begin sending events to the delegate
-    private var isReady = false
     
     /// Value that stores whether or not the content should be editable when the editor is loaded.
     /// Is basically `isEditingEnabled` before the editor is loaded.
@@ -123,7 +116,7 @@ private let DefaultInnerLineHeight: Int = 21
             }
         }
     }
-        
+    
     // MARK: Initialization
     
     public override init(frame: CGRect) {
@@ -150,27 +143,10 @@ private let DefaultInnerLineHeight: Int = 21
         webView.scrollView.clipsToBounds = false
         addSubview(webView)
         
-        reloadHTML(with: html)
-    }
-    
-    /// Reloads the HTML for the editor.
-    /// - parameter html: The HTML that will be loaded into the editor view once it finishes initializing.
-    /// - parameter headerHTML: The header HTML that will be inserted after the default styles.
-    /// - parameter footerHTML: The footer HTML that will be inserted after the default JavaScript.
-    public func reloadHTML(with html: String, headerHTML: String = "", footerHTML: String = "") {
-        guard let filePath = Bundle(for: RichEditorView.self).path(forResource: "rich_editor", ofType: "html") else {
-            return
+        if let filePath = Bundle(for: RichEditorView.self).path(forResource: "rich_editor", ofType: "html") {
+            let url = URL(fileURLWithPath: filePath, isDirectory: false)
+            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         }
-        
-        let readerHtmlTemplate = try! String(contentsOfFile: filePath)
-        let fullHtml = readerHtmlTemplate
-            .replacingOccurrences(of: "{{header}}", with: headerHTML)
-            .replacingOccurrences(of: "{{footer}}", with: footerHTML)
-        
-        webView.loadHTMLString(fullHtml, baseURL: URL(fileURLWithPath: filePath, isDirectory: false).deletingLastPathComponent())
-        
-        isEditorLoaded = false
-        self.html = html
     }
     
     // MARK: - Rich Text Editing
@@ -246,15 +222,15 @@ private let DefaultInnerLineHeight: Int = 21
     
     /// Whether or not the selection has a type specifically of "Range".
     public func hasRangeSelection(handler: @escaping (Bool) -> Void) {
-        runJS("RE.rangeSelectionExists()") { val in
-            handler((val as NSString).boolValue)
+        runJS("RE.rangeSelectionExists()") { r in
+            handler(r == "true" ? true : false)
         }
     }
     
     /// Whether or not the selection has a type specifically of "Range" or "Caret".
     public func hasRangeOrCaretSelection(handler: @escaping (Bool) -> Void) {
-        runJS("RE.rangeOrCaretSelectionExists()") { val in
-            handler((val as NSString).boolValue)
+        runJS("RE.rangeOrCaretSelectionExists()") { r in
+            handler(r == "true" ? true : false)
         }
     }
     
@@ -305,25 +281,18 @@ private let DefaultInnerLineHeight: Int = 21
         runJS("RE.setUnderline()")
     }
     
-    private func getColorHex(with color: UIColor?) -> String {
-        // if no color, then clear the color style css
-        return color?.hex == nil ? "null" : "'\(color!.hex)'"
-    }
-    
-    public func setTextColor(_ color: UIColor?) {
+    public func setTextColor(_ color: UIColor) {
         runJS("RE.prepareInsert()")
-        let color = getColorHex(with: color)
-        runJS("RE.setTextColor(\(color))")
+        runJS("RE.setTextColor('\(color.hex)')")
     }
     
     public func setEditorFontColor(_ color: UIColor) {
         runJS("RE.setBaseTextColor('\(color.hex)')")
     }
     
-    public func setTextBackgroundColor(_ color: UIColor?) {
+    public func setTextBackgroundColor(_ color: UIColor) {
         runJS("RE.prepareInsert()")
-        let color = getColorHex(with: color)
-        runJS("RE.setTextBackgroundColor(\(color))")
+        runJS("RE.setTextBackgroundColor('\(color.hex)')")
     }
     
     public func header(_ h: Int) {
@@ -370,6 +339,11 @@ private let DefaultInnerLineHeight: Int = 21
     public func insertLink(_ href: String, title: String) {
         runJS("RE.prepareInsert()")
         runJS("RE.insertLink('\(href.escaped)', '\(title.escaped)')")
+    }
+    
+    public func insertCodeSnippet(_ text: String, rows: Int) {
+        runJS("RE.prepareInsert()")
+        runJS("RE.insertCodeSnippet('\(text.escaped)', '\(rows)')")
     }
     
     public func focus() {
@@ -570,7 +544,6 @@ private let DefaultInnerLineHeight: Int = 21
                 lineHeight = DefaultInnerLineHeight
                 
                 delegate?.richEditorDidLoad?(self)
-                isReady = true
             }
             updateHeight()
         }

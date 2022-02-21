@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-'use strict';
+ "use strict";
 
 const RE = {};
 
 RE.editor = document.getElementById('editor');
 
 // Not universally supported, but seems to work in iOS 7 and 8
-document.addEventListener('selectionchange', function() {
+document.addEventListener("selectionchange", function() {
     RE.backuprange();
 });
 
 //looks specifically for a Range selection and not a Caret selection
 RE.rangeSelectionExists = function() {
     //!! coerces a null to bool
-    const sel = document.getSelection();
-    if (sel && sel.type == 'Range') {
+    var sel = document.getSelection();
+    if (sel && sel.type == "Range") {
         return true;
     }
     return false;
@@ -36,34 +36,34 @@ RE.rangeSelectionExists = function() {
 
 RE.rangeOrCaretSelectionExists = function() {
     //!! coerces a null to bool
-    const sel = document.getSelection();
-    if (sel && (sel.type == 'Range' || sel.type == 'Caret')) {
+    var sel = document.getSelection();
+    if (sel && (sel.type == "Range" || sel.type == "Caret")) {
         return true;
     }
     return false;
 };
 
-RE.editor.addEventListener('input', function() {
+RE.editor.addEventListener("input", function() {
     RE.updatePlaceholder();
     RE.backuprange();
-    RE.sendInputCallback();
+    RE.callback("input");
 });
 
-RE.editor.addEventListener('focus', function() {
+RE.editor.addEventListener("focus", function() {
     RE.backuprange();
-    RE.callback('focus');
+    RE.callback("focus");
 });
 
-RE.editor.addEventListener('blur', function() {
-    RE.callback('blur');
+RE.editor.addEventListener("blur", function() {
+    RE.callback("blur");
 });
 
 RE.customAction = function(action) {
-    RE.callback('action/' + action);
+    RE.callback("action/" + action);
 };
 
 RE.updateHeight = function() {
-    RE.callback('updateHeight');
+    RE.callback("updateHeight");
 }
 
 RE.callbackQueue = [];
@@ -73,19 +73,15 @@ RE.runCallbackQueue = function() {
     }
 
     setTimeout(function() {
-        window.location.href = 're-callback://';
+        window.location.href = "re-callback://";
+        //window.webkit.messageHandlers.iOS_Native_FlushMessageQueue.postMessage("re-callback://")
     }, 0);
 };
 
 RE.getCommandQueue = function() {
-    let commands = JSON.stringify(RE.callbackQueue);
+    var commands = JSON.stringify(RE.callbackQueue);
     RE.callbackQueue = [];
     return commands;
-};
-
-// Tells the editor that the contents have changed, user input action
-RE.sendInputCallback = function() {
-    RE.callback('input');
 };
 
 RE.callback = function(method) {
@@ -94,11 +90,11 @@ RE.callback = function(method) {
 };
 
 RE.setHtml = function(contents) {
-    let tempWrapper = document.createElement('div');
+    var tempWrapper = document.createElement('div');
     tempWrapper.innerHTML = contents;
-    let images = tempWrapper.querySelectorAll('img');
+    var images = tempWrapper.querySelectorAll("img");
 
-    for (let i = 0; i < images.length; i++) {
+    for (var i = 0; i < images.length; i++) {
         images[i].onload = RE.updateHeight;
     }
 
@@ -119,14 +115,14 @@ RE.setBaseTextColor = function(color) {
 };
 
 RE.setPlaceholderText = function(text) {
-    RE.editor.setAttribute('placeholder', text);
+    RE.editor.setAttribute("placeholder", text);
 };
 
 RE.updatePlaceholder = function() {
     if (RE.editor.innerHTML.indexOf('img') !== -1 || RE.editor.innerHTML.length > 0) {
-        RE.editor.classList.remove('placeholder');
+        RE.editor.classList.remove("placeholder");
     } else {
-        RE.editor.classList.add('placeholder');
+        RE.editor.classList.add("placeholder");
     }
 };
 
@@ -179,35 +175,17 @@ RE.setUnderline = function() {
 };
 
 RE.setTextColor = function(color) {
-    if (!color) {
-        const node = RE.currentSelection.node;
-        if (node) {
-            node.style.color = null;
-            RE.sendInputCallback();
-        }
-        return;
-    }
-    
     RE.restorerange();
-    document.execCommand('styleWithCSS', null, true);
+    document.execCommand("styleWithCSS", null, true);
     document.execCommand('foreColor', false, color);
-    document.execCommand('styleWithCSS', null, false);
+    document.execCommand("styleWithCSS", null, false);
 };
 
 RE.setTextBackgroundColor = function(color) {
-    if (!color) {
-        const node = RE.currentSelection.node;
-        if (node) {
-            node.style.backgroundColor = null;
-            RE.sendInputCallback();
-        }
-        return;
-    }
-    
     RE.restorerange();
-    document.execCommand('styleWithCSS', null, true);
+    document.execCommand("styleWithCSS", null, true);
     document.execCommand('hiliteColor', false, color);
-    document.execCommand('styleWithCSS', null, false);
+    document.execCommand("styleWithCSS", null, false);
 };
 
 RE.setHeading = function(heading) {
@@ -217,6 +195,7 @@ RE.setHeading = function(heading) {
 RE.setIndent = function() {
     document.execCommand('indent', false, null);
 };
+
 
 RE.setOutdent = function() {
     document.execCommand('outdent', false, null);
@@ -251,13 +230,24 @@ RE.setLineHeight = function(height) {
 };
 
 RE.insertImage = function(url, alt) {
-    const img = document.createElement('img');
-    img.setAttribute('src', url);
-    img.setAttribute('alt', alt);
+    var img = document.createElement('img');
+    img.setAttribute("src", url);
+    img.setAttribute("alt", alt);
     img.onload = RE.updateHeight;
 
     RE.insertHTML(img.outerHTML);
-    RE.sendInputCallback();
+    RE.callback("input");
+};
+
+RE.insertCodeSnippet = function(text, rows) {
+    RE.prepareInsert();
+    if (rows > 6) {
+        rows = 6;
+    }
+    var snippet = "<textarea class='code-snippet' style='font-family:Menlo; font-size: 16px' rows='" + rows + "' readonly>" + text + "</textarea>"
+    
+    RE.insertHTML("<div class='div-snippet' contenteditable='false'>" +  snippet + "<div><br>");
+    RE.callback("input");
 };
 
 RE.setBlockquote = function() {
@@ -271,21 +261,21 @@ RE.insertHTML = function(html) {
 
 RE.insertLink = function(url, title) {
     RE.restorerange();
-    const sel = document.getSelection();
+    var sel = document.getSelection();
     if (sel.toString().length !== 0) {
         if (sel.rangeCount) {
-            let el = document.createElement('a');
-            el.setAttribute('href', url);
-            el.setAttribute('title', title);
 
-            let range = sel.getRangeAt(0).cloneRange();
+            var el = document.createElement("a");
+            el.setAttribute("href", url);
+            el.setAttribute("title", title);
+
+            var range = sel.getRangeAt(0).cloneRange();
             range.surroundContents(el);
             sel.removeAllRanges();
             sel.addRange(range);
         }
     }
-    
-    RE.sendInputCallback();
+    RE.callback("input");
 };
 
 RE.prepareInsert = function() {
@@ -293,25 +283,16 @@ RE.prepareInsert = function() {
 };
 
 RE.backuprange = function() {
-    const selection = window.getSelection();
-    if (selection.rangeCount === 0) {
-        return;
+    var selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        var range = selection.getRangeAt(0);
+        RE.currentSelection = {
+            "startContainer": range.startContainer,
+            "startOffset": range.startOffset,
+            "endContainer": range.endContainer,
+            "endOffset": range.endOffset
+        };
     }
-    
-    let node = selection.anchorNode;
-    if (node.nodeType === 3) {
-        // use the parent, if text node
-        node = node.parentNode;
-    }
-    
-    const range = selection.getRangeAt(0);
-    RE.currentSelection = {
-        startContainer: range.startContainer,
-        startOffset: range.startOffset,
-        endContainer: range.endContainer,
-        endOffset: range.endOffset,
-        node,
-    };
 };
 
 RE.addRangeToSelection = function(selection, range) {
@@ -323,35 +304,35 @@ RE.addRangeToSelection = function(selection, range) {
 
 // Programatically select a DOM element
 RE.selectElementContents = function(el) {
-    let range = document.createRange();
+    var range = document.createRange();
     range.selectNodeContents(el);
-    let sel = window.getSelection();
+    var sel = window.getSelection();
     // this.createSelectionFromRange sel, range
     RE.addRangeToSelection(sel, range);
 };
 
 RE.restorerange = function() {
-    let selection = window.getSelection();
+    var selection = window.getSelection();
     selection.removeAllRanges();
-    let range = document.createRange();
+    var range = document.createRange();
     range.setStart(RE.currentSelection.startContainer, RE.currentSelection.startOffset);
     range.setEnd(RE.currentSelection.endContainer, RE.currentSelection.endOffset);
     selection.addRange(range);
 };
 
 RE.focus = function() {
-    let range = document.createRange();
+    var range = document.createRange();
     range.selectNodeContents(RE.editor);
     range.collapse(false);
-    let selection = window.getSelection();
+    var selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
     RE.editor.focus();
 };
 
 RE.focusAtPoint = function(x, y) {
-    const range = document.caretRangeFromPoint(x, y) || document.createRange();
-    const selection = window.getSelection();
+    var range = document.caretRangeFromPoint(x, y) || document.createRange();
+    var selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
     RE.editor.focus();
@@ -364,7 +345,7 @@ RE.blurFocus = function() {
 /**
 Recursively search element ancestors to find a element nodeName e.g. A
 **/
-const _findNodeByNameInContainer = function(element, nodeName, rootElementId) {
+var _findNodeByNameInContainer = function(element, nodeName, rootElementId) {
     if (element.nodeName == nodeName) {
         return element;
     } else {
@@ -375,12 +356,12 @@ const _findNodeByNameInContainer = function(element, nodeName, rootElementId) {
     }
 };
 
-const isAnchorNode = function(node) {
-    return ('A' == node.nodeName);
+var isAnchorNode = function(node) {
+    return ("A" == node.nodeName);
 };
 
 RE.getAnchorTagsInNode = function(node) {
-    let links = [];
+    var links = [];
 
     while (node.nextSibling !== null && node.nextSibling !== undefined) {
         node = node.nextSibling;
@@ -400,41 +381,42 @@ RE.countAnchorTagsInNode = function(node) {
  * @returns {string}
  */
 RE.getSelectedHref = function() {
-    let href = '';
-    let sel = window.getSelection();
+    var href, sel;
+    href = '';
+    sel = window.getSelection();
     if (!RE.rangeOrCaretSelectionExists()) {
         return null;
     }
 
-    let tags = RE.getAnchorTagsInNode(sel.anchorNode);
+    var tags = RE.getAnchorTagsInNode(sel.anchorNode);
     //if more than one link is there, return null
     if (tags.length > 1) {
         return null;
     } else if (tags.length == 1) {
         href = tags[0];
     } else {
-        let node = _findNodeByNameInContainer(sel.anchorNode.parentElement, 'A', 'editor');
+        var node = _findNodeByNameInContainer(sel.anchorNode.parentElement, 'A', 'editor');
         href = node.href;
     }
 
-    return (href ? href : null);
+    return href ? href : null;
 };
 
 // Returns the cursor position relative to its current position onscreen.
 // Can be negative if it is above what is visible
 RE.getRelativeCaretYPosition = function() {
-    let y = 0;
-    let sel = window.getSelection();
+    var y = 0;
+    var sel = window.getSelection();
     if (sel.rangeCount) {
-        const range = sel.getRangeAt(0);
-        const needsWorkAround = (range.startOffset == 0);
+        var range = sel.getRangeAt(0);
+        var needsWorkAround = (range.startOffset == 0)
         /* Removing fixes bug when node name other than 'div' */
         // && range.startContainer.nodeName.toLowerCase() == 'div');
         if (needsWorkAround) {
             y = range.startContainer.offsetTop - window.pageYOffset;
         } else {
             if (range.getClientRects) {
-                let rects = range.getClientRects();
+                var rects = range.getClientRects();
                 if (rects.length > 0) {
                     y = rects[0].top;
                 }
@@ -446,5 +428,5 @@ RE.getRelativeCaretYPosition = function() {
 };
 
 window.onload = function() {
-    RE.callback('ready');
+    RE.callback("ready");
 };
